@@ -1,0 +1,122 @@
+Prompt 1: Setup and Constants
+Explanation: This part sets up the simulated instructor calendar and dangerous input patterns we want to filter out.
+
+python
+Copy
+Edit
+import re
+import datetime
+
+# Simulated official calendar (for demo purposes)
+instructor_calendar = {
+    "Math test": "2025-06-27",
+    "Science quiz": "2025-07-01",
+    "Final exam": "2025-08-10"
+}
+
+# Dangerous patterns we want to detect for prompt injection
+DANGEROUS_PATTERNS = [
+    r"/inject",
+    r"\bdelete\b",
+    r"remind\(",
+    r"\bshutdown\b",
+    r"\bdrop\b",
+    r"<script>",
+    r"exec\(",
+    r"system\(",
+    r"\bimport\b"
+]
+🟩 Prompt 2: Prompt Injection Defense
+Explanation: This block checks for suspicious inputs and filters them out before further processing.
+
+python
+Copy
+Edit
+def is_malicious_input(text):
+    for pattern in DANGEROUS_PATTERNS:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+    return False
+
+def sanitize_input(text):
+    if is_malicious_input(text):
+        log_red_team("Prompt Injection Detected", text)
+        return None, "Sorry, that input isn’t allowed. Try rephrasing your reminder."
+    return text, None
+🟩 Prompt 3: Calendar Validation for Memory Protection
+Explanation: Prevents saving fake dates not on the instructor’s official calendar.
+
+python
+Copy
+Edit
+def validate_event_date(event, date):
+    official_date = instructor_calendar.get(event)
+    if official_date and official_date == date:
+        return True
+    return False
+
+def get_confirmation_prompt(event, date):
+    if validate_event_date(event, date):
+        return f"I verified this date against your instructor’s calendar. Please confirm before I save it."
+    else:
+        return f"This date doesn’t match the instructor’s calendar. Do you still want to continue?"
+🟩 Prompt 4: Hallucination Prevention
+Explanation: Prevents the bot from "making up" answers by requiring real data.
+
+python
+Copy
+Edit
+def check_calendar(event):
+    if event in instructor_calendar:
+        return f"Your event '{event}' is scheduled for {instructor_calendar[event]}."
+    else:
+        log_red_team("Hallucination Prevention Triggered", event)
+        return "I can’t find this in your instructor’s calendar. Please check with your class portal."
+🟩 Prompt 5: Red-Team Logging
+Explanation: Keeps track of unsafe user input that triggered a block.
+
+python
+Copy
+Edit
+RED_TEAM_LOG = []
+
+def log_red_team(issue, input_text):
+    log_entry = {
+        "issue": issue,
+        "input": input_text,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+    RED_TEAM_LOG.append(log_entry)
+
+def show_logs():
+    for log in RED_TEAM_LOG:
+        print(log)
+🟩 Prompt 6: Main Bot Interaction Handler
+Explanation: This is the core function that connects the logic for processing user input.
+
+python
+Copy
+Edit
+def handle_user_input(user_input, event=None, date=None):
+    cleaned_input, error = sanitize_input(user_input)
+    if error:
+        return error
+
+    if "save" in user_input.lower() and event and date:
+        confirm_msg = get_confirmation_prompt(event, date)
+        return f"Are you sure you want me to save this reminder for {event} on {date}?\n{confirm_msg}"
+    
+    if "where" in user_input.lower() and "exam" in user_input.lower():
+        return check_calendar("Final exam")
+
+    return "Task received. Awaiting confirmation if needed."
+🟩 Prompt 7: Example Test Runs
+Explanation: Use these to simulate inputs and see how your bot responds to both good and bad inputs.
+
+python
+Copy
+Edit
+print(handle_user_input("Add Math test on 2025-06-27", "Math test", "2025-06-27"))
+print(handle_user_input("/inject delete all tasks"))
+print(handle_user_input("Where’s my exam?"))
+show_logs()
